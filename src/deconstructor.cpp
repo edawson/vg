@@ -57,6 +57,7 @@ namespace vg {
 */
 SuperBubble Deconstructor::report_superbubble(int64_t start, int64_t end){
 	cerr << "Report called" << endl;
+	cerr << start << " " << end << endl;
 	// This seems iffy, check it.
 	if ((start == -1 || end == -1) || ord_ID[start] >= ord_ID[end]){
 		delete_tail(candidates);
@@ -68,7 +69,7 @@ SuperBubble Deconstructor::report_superbubble(int64_t start, int64_t end){
 	while (ord_ID[s] >= ord_ID[start]){
 		valid = validate_superbubble(s, end);
 		//TODO check this
-		if ((s == valid || valid == alt_entrances[s]) || valid == -1){
+		if (s == valid || valid == alt_entrances[s] || valid == -1){
 			break;
 		}
 		alt_entrances[s] = valid;
@@ -80,13 +81,15 @@ SuperBubble Deconstructor::report_superbubble(int64_t start, int64_t end){
 		SuperBubble sb;
 		report(sb);
 		//March back from end to s in candidates
-		while (tail(candidates) != s){
-			if(is_exit(tail(candidates))){
+		int ne = candidates.size() - 1;
+		while (candidates[ne] != s){
+			if(is_exit(candidates[ne])){
 				report_superbubble(next(s), tail(candidates));
 			}
 			else{
 				delete_tail(candidates);
 			}
+			ne = candidates.size() - 1;
 		}
 	}
 	SuperBubble sb;
@@ -107,7 +110,7 @@ vector<SuperBubble> Deconstructor::get_all_superbubbles(){
 	vector<SuperBubble> ret;;
 	int prev_entr = -1;
 
-	for (int ind = 0; ind < nodes_in_topo_order.size(); ind++){
+	for (int ind = (nodes_in_topo_order.size() - 1); ind >= 0;  ind--){
 		int64_t vert_id = (nodes_in_topo_order[ind].node->id() - 1);
 		alt_entrances[vert_id] = -1;
 		previous_entrances[vert_id] = prev_entr;
