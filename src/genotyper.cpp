@@ -127,7 +127,7 @@ namespace vg {
         map<string, vcflib::Variant> hash_to_var;
         set<int64_t> variant_nodes;
 
-        bool use_snarls = false;
+        bool use_snarls = true;
 
         std::function<double(int, int)> scale_read_counts = [&](int allele_len, int read_len){
             double scale = (double) allele_len / (double) read_len;
@@ -324,35 +324,19 @@ namespace vg {
 
         SimpleConsistencyCalculator scc;
         std::function<void(Alignment&)> count_traversal_supports = [&](const Alignment& a){
-            vector<int64_t> node_list;
-            for (int i = 0; i < a.path().mapping_size(); i++){
-                int64_t node_id = a.path().mapping(i).position().node_id();
-                if (sufficient_matches(a.path().mapping(i))){
-                    node_list.push_back(node_id);
-                }
-            }
-            std::sort(node_list.begin(), node_list.end());
+            cerr << a.name() << endl;
             for (auto n_to_s : name_to_snarl){
-                std::vector<int64_t>::iterator intersection_begin;
-                std::vector<int64_t>::iterator intersection_end = set_intersection(node_list.begin(), node_list.end(),
-                                     snarl_name_to_node_set[n_to_s.first].begin(),
-                                     snarl_name_to_node_set[n_to_s.first].end(),
-                                     intersection_begin);
-                vector<int64_t> inter (intersection_begin, intersection_end);
-                if (inter.size() != 0){
                     vector<bool> consistencies = scc.calculate_consistency(n_to_s.second,
                                 snarl_name_to_traversals[n_to_s.first], a);
                     for (int c = 0; c < consistencies.size(); c++){
-                        
                         if (consistencies[c]){
                             SnarlTraversal st = snarl_name_to_traversals[n_to_s.first][c];
                             traversal_name_to_alignment_names[st.name()].insert(a.name()); 
+                            allele_name_to_alignment_name[st.name()].insert(a.name());
+                            cerr << st.name() << " " << allele_name_to_alignment_name[st.name()].size() << endl;
                         }
+                        break;
                     }
-                    
-                } 
-                
-            
             }
             
             
@@ -510,15 +494,6 @@ namespace vg {
         }
 
     }
-
-    // void Genotyper::genotype(void Genotyper::variant_recall(VG* graph,
-    //         vcflib::VariantCallFile* vars,
-    //         FastaReference* ref_genome,
-    //         vector<FastaReference*> insertions,
-    //         string gamfile, bool isIndex){
-
-    //         }
-
 
     void Genotyper::run(VG& graph,
             vector<Alignment>& alignments,
