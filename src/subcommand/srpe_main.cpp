@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <functional>
 #include <regex>
+#include <math.h>
 #include "subcommand.hpp"
 #include "srpe.hpp"
 #include "stream.hpp"
@@ -14,7 +15,6 @@
 #include "genotyper.hpp"
 #include "path_index.hpp"
 #include "vg.hpp"
-#include <math.h>
 #include "srpe.hpp"
 #include "filter.hpp"
 #include "utility.hpp"
@@ -117,18 +117,14 @@ int main_srpe(int argc, char** argv){
                 threads = atoi(optarg);
                 break;
 
-            case 'R':
-                do_all = true;
-                break;
+
             case 'x':
                 xg_name = optarg;
                 break;
             case 'g':
                 gcsa_name = optarg;
                 break;
-            case 'S':
-                spec_vcf = optarg;
-                break;
+
             case 'r':
                 ref_fasta = optarg;
                 break;
@@ -160,7 +156,6 @@ int main_srpe(int argc, char** argv){
     graph_name = argv[++optind];
 
     xg::XG* xg_ind = new xg::XG();
-    Index gamind;
 
     vg::VG* graph;
 
@@ -185,10 +180,12 @@ int main_srpe(int argc, char** argv){
         srpe.ff.set_my_xg_idx(xg_ind);
     }
     srpe.ff.init_mapper();
-    // else{
+    
+    ifstream gamstream;
+    gamstream.open(alignment_file);
 
-    // }
-
+    vector<BREAKPOINT> x;
+    srpe.call_svs_split_read(graph, gamstream, x, ref_path);
     
 
     return 0;

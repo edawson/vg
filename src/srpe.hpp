@@ -2,7 +2,8 @@
 #define VG_SRPE
 #include <string>
 #include <cstdint>
-#include <Variant.h>
+#include <iostream>
+#include "Variant.h"
 #include "filter.hpp"
 #include "index.hpp"
 #include "path_index.hpp"
@@ -13,6 +14,7 @@
 #include "gcsa.h"
 #include "alignment.hpp"
 #include "genotypekit.hpp"
+
 using namespace std;
 namespace vg{
 
@@ -145,8 +147,8 @@ public:
 
             vector<pair<int, int> > intervals;
 
-            void call_svs_paired_end(vg::VG* graph, ifstream& gamstream, vector<BREAKPOINT>& bps, string refpath="");
-            void call_svs_split_read(vg::VG* graph, ifstream& gamstream, vector<BREAKPOINT>& bps, string refpath="");
+            void call_svs_paired_end(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath);
+            void call_svs_split_read(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath);
             void call_svs(string graphfile, string gamfile, string refpath);
 
             // Calculate a proxy for discordance between a set of Alginments

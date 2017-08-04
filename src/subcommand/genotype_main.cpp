@@ -14,7 +14,7 @@ using namespace std;
 using namespace vg;
 using namespace vg::subcommand;
 void help_genotype(char** argv) {
-    cerr << "usage: " << argv[0] << " genotype [options] <graph.vg> [reads.index/] > <calls.vcf>" << endl
+    cerr << "usage: " << argv[0] << " genotype [options] <graph.vg> reads.index/ > <calls.vcf>" << endl
          << "Compute genotypes from a graph and an indexed collection of reads" << endl
          << endl
          << "options:" << endl
@@ -207,6 +207,7 @@ int main_genotype(int argc, char** argv) {
             gam_file = optarg;
             useindex = false;
             break;
+
         case 'h':
         case '?':
             /* getopt_long already printed an error message. */

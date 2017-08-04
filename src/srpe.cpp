@@ -11,14 +11,30 @@ namespace vg{
 
     }
 
-    void SRPE::call_svs_paired_end(vg::VG* graph, ifstream& gamstream, vector<BREAKPOINT>& bps, string refpath){
+    void SRPE::call_svs_paired_end(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath){
 
     }
 
-    void SRPE::call_svs_split_read(vg::VG* graph, ifstream& gamstream, vector<BREAKPOINT>& bps, string refpath){
+    void SRPE::call_svs_split_read(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath){
         // We're going to do a bunch of split-read mappings now,
         // then decide if our orientations support an inversion, an insertion,
         // or a deletion.
+
+        vector<Path> remap_paths;
+        
+        std::function<void(Alignment&)> srfunc = [&](Alignment& a){
+            
+            vector<Alignment> remapped = ff.remap(a);
+
+            if (remapped[0].score() > a.score()){
+                #pragma omp critical
+                remap_paths.push_back(remapped[0].path());
+            }
+        };
+
+        stream::for_each_parallel(gamstream, srfunc);
+
+        vector<Translation> augment_transls = graph->edit(remap_paths);
     }
 
 
@@ -59,7 +75,7 @@ namespace vg{
     vector<BREAKPOINT> pe_bps;
     vector<BREAKPOINT> sr_bps;
 
-    call_svs_paired_end(graph, gamstream, pe_bps, refpath);
+    //call_svs_paired_end(graph, gamstream, pe_bps, refpath);
     call_svs_split_read(graph, gamstream, sr_bps, refpath);
     vector<BREAKPOINT> pe_merged = merge_breakpoints(pe_bps);
     vector<BREAKPOINT> sr_merged = merge_breakpoints(sr_bps);

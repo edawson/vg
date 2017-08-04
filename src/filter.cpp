@@ -324,6 +324,8 @@ namespace vg{
             exit(1);
         }
         my_mapper = new Mapper(my_xg_index, gcsa_ind, lcp_ind);
+        // Allow band jumps up to 10kb
+        my_mapper->max_band_jump = 10000;
     }
 
     bool Filter::perfect_filter(Alignment& aln){
@@ -856,7 +858,7 @@ namespace vg{
             exit(1337);
         }
 
-        vector<Alignment> match = this->my_mapper->align_multi(aln);
+        vector<Alignment> match = this->my_mapper->align_multi(aln, 0, 0, 0, 20);
         return match;
     }
 
@@ -870,8 +872,7 @@ namespace vg{
         x.set_sequence(seq);
 
         vector<Alignment> ret;
-        ret = this->my_mapper->align_multi(x);
-
+        ret = remap(x);
         
 
         return ret;
