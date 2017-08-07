@@ -21,20 +21,36 @@ namespace vg{
         // or a deletion.
 
         vector<Path> remap_paths;
+
+        Translator t;
         
         std::function<void(Alignment&)> srfunc = [&](Alignment& a){
             
             vector<Alignment> remapped = ff.remap(a);
 
-            if (remapped[0].score() > a.score()){
-                #pragma omp critical
-                remap_paths.push_back(remapped[0].path());
+            if (remapped.size() > 0 && remapped[0].score() > a.score()){
+                
+                Path pp = trim_hanging_ends(remapped[0].path());
+                pp.set_name(a.name());
+                // pp = t.translate(pp);
+                //cout << pb2json(pp) << endl;
+
+                remap_paths.push_back(pp);
+
+                // vector<Translation> transls = graph->edit( remap_paths );
+                // t.load(transls);
+                
+
             }
         };
 
-        stream::for_each_parallel(gamstream, srfunc);
+        stream::for_each(gamstream, srfunc);
+                    // vector<Translation> transls = graph->edit( remap_paths );
 
-        vector<Translation> augment_transls = graph->edit(remap_paths);
+    graph->unchop();
+    graph->serialize_to_file("augy.vg");
+        
+
     }
 
 

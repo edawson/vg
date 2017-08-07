@@ -159,6 +159,11 @@ int main_srpe(int argc, char** argv){
 
     vg::VG* graph;
 
+    if (!graph_name.empty()){
+        ifstream gin(graph_name);
+        graph = new vg::VG(gin);
+    }
+
     if (!xg_name.empty()){
         ifstream in(xg_name);
         xg_ind->load(in);
