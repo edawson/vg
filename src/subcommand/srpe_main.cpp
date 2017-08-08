@@ -190,7 +190,8 @@ int main_srpe(int argc, char** argv){
     gamstream.open(alignment_file);
 
     vector<BREAKPOINT> x;
-    srpe.call_svs_split_read(graph, gamstream, x, ref_path);
+    
+    srpe.call_svs_paired_end(graph, gamstream, x, "Random");
     
 
     return 0;

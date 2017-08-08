@@ -2,11 +2,14 @@
 #define VG_SRPE
 #include <string>
 #include <cstdint>
+#include <vector>
 #include <iostream>
+#include <math.h>
 #include "Variant.h"
 #include "filter.hpp"
 #include "index.hpp"
 #include "path_index.hpp"
+#include "position.hpp"
 #include "IntervalTree.h"
 #include "vg.pb.h"
 #include "fml.h"
@@ -21,8 +24,46 @@ namespace vg{
 
     struct BREAKPOINT{
         string name;
-        Position position;
+        pos_t position;
         vector<BREAKPOINT> mates;
+        vector<pair<Alignment, Alignment>> reads;
+
+        inline void add_pe_support(Alignment& a, Alignment& b){
+            reads.push_back(make_pair(a, b));
+            pe_supports += 1;
+        }
+
+        // Return mean, min, and max position for the breakpoint
+        inline tuple<int, int32_t, int32_t> get_avg_pos(){
+            double tmp = 0.0;
+            int32_t min = INT32_MAX;
+            int32_t max = 0;
+            for (auto x : mates){
+                tmp += x.start;
+                if (x.start < min){
+                    min = x.start;
+                }
+                if (x.start > max){
+                    max = x.start;
+                }
+            }
+            int avg = floor( (tmp / (double) mates.size()) );
+            return make_tuple(avg, min, max);
+
+        }
+
+        inline void merge(BREAKPOINT b){
+            for (auto x : b.reads){
+                reads.push_back(x);
+            }
+            for (auto x : b.mates){
+                mates.push_back(x);
+            }
+            pe_supports += b.pe_supports;
+            sr_supports += b.sr_supports;
+            other_supports += b.other_supports;
+
+        };
 
         string contig;
         int64_t start = -1;
@@ -33,44 +74,31 @@ namespace vg{
         // or this way <<---
         bool isForward;
         // 0: Unset, 1: INS, 2: DEL, 3: INV, 4: DUP
-        int SV_TYPE = 0;
+        int sv_type_counts [5]  {0, 0, 0, 0, 0};
         // 
 
         int normal_supports = 0;
         int tumor_supports = 0;
         
-        int fragl_supports = 0;
-        int split_supports = 0;
+        int pe_supports = 0;
+        int sr_supports = 0;
         int other_supports = 0;
 
         inline int total_supports(){
-            return fragl_supports + split_supports + other_supports;
+            return pe_supports + sr_supports + other_supports;
         }
-        inline bool overlap(BREAKPOINT p, int dist){
-
-            if (start > -1 ){
-                if ( abs(start - p.start) < dist){
-                    return true;
-                }
-            }
-            else{
-                if (position.node_id() == p.position.node_id() && abs(position.offset() - p.position.offset()) < dist){
-                    return true;
-                }
-            }
-            
-            return false;
-        }
+        
         inline string to_string(){
             stringstream x;
             x << "Pos: " << start << " u: " << upper_bound << " l: " << lower_bound << " s: " << total_supports();
             return x.str();
         }
 
+        
+
     };
 
-
-
+    bool CompareBreakpoint(const BREAKPOINT& a, const BREAKPOINT& b);
 /**
  * Overview:
  *      Use the GAM/GAM index and a filter to locate Alignments
@@ -84,57 +112,57 @@ namespace vg{
  *          Translocations: Distant read pairs
  */
           
-class DepthMap {
-    /**
-    *  Map <node_id : offset : depth>
-    *  or
-    *  Map <SnarlTraversal : support count>
-    */
-public:
-  int8_t* depths;
-  uint64_t size;
-  map<int64_t, uint64_t> node_pos;
-  vg::VG* g_graph;
-  inline DepthMap(int64_t sz) { depths = new int8_t[sz]; };
-  inline DepthMap() {};
-  inline DepthMap(vg::VG* graph){
-    g_graph = graph;
-    int64_t tot_size = 0;
-    std::function<void(Node*)> count_size = [&](Node* n){
-        #pragma omp critical
-        {
-            node_pos[n->id()] = tot_size;
-            tot_size += n->sequence().length();
-        }
-    };
-    graph->for_each_node(count_size);
-    size = tot_size;
-    depths = new int8_t(size);
-  };
-  inline int8_t get_depth(int64_t node_id, int64_t offset) { return depths[node_id + offset]; };
-  inline void set_depth(int64_t node_id, int64_t offset, int8_t d) { depths[node_id + offset] = d; };
-  inline void increment_depth(int64_t node_id, int64_t offset) {
+// class DepthMap {
+//     /**
+//     *  Map <node_id : offset : depth>
+//     *  or
+//     *  Map <SnarlTraversal : support count>
+//     */
+// public:
+//   int8_t* depths;
+//   uint64_t size;
+//   map<int64_t, uint64_t> node_pos;
+//   vg::VG* g_graph;
+//   inline DepthMap(int64_t sz) { depths = new int8_t[sz]; };
+//   inline DepthMap() {};
+//   inline DepthMap(vg::VG* graph){
+//     g_graph = graph;
+//     int64_t tot_size = 0;
+//     std::function<void(Node*)> count_size = [&](Node* n){
+//         #pragma omp critical
+//         {
+//             node_pos[n->id()] = tot_size;
+//             tot_size += n->sequence().length();
+//         }
+//     };
+//     graph->for_each_node(count_size);
+//     size = tot_size;
+//     depths = new int8_t(size);
+//   };
+//   inline int8_t get_depth(int64_t node_id, int64_t offset) { return depths[node_id + offset]; };
+//   inline void set_depth(int64_t node_id, int64_t offset, int8_t d) { depths[node_id + offset] = d; };
+//   inline void increment_depth(int64_t node_id, int64_t offset) {
     
-    depths[node_pos [node_id] + offset] += 1;
-};
-  inline void fill_depth(const vg::Path& p){
-    for (int i = 0; i < p.mapping_size(); i++){
-        Mapping m = p.mapping(i);
-        Position p = m.position();
-        int64_t nodeid = p.node_id();
-        int offset = p.offset();
-        for (int j = 0; j < m.edit_size(); j++){
-            Edit e = m.edit(j);
-            if (e.from_length() == e.to_length() && e.sequence().empty()){
-                for (int x = 0; x < e.from_length(); ++x){
-                    increment_depth(nodeid, offset + x);
-                }
-            }
-        }
-    }
-  };
+//     depths[node_pos [node_id] + offset] += 1;
+// };
+//   inline void fill_depth(const vg::Path& p){
+//     for (int i = 0; i < p.mapping_size(); i++){
+//         Mapping m = p.mapping(i);
+//         Position p = m.position();
+//         int64_t nodeid = p.node_id();
+//         int offset = p.offset();
+//         for (int j = 0; j < m.edit_size(); j++){
+//             Edit e = m.edit(j);
+//             if (e.from_length() == e.to_length() && e.sequence().empty()){
+//                 for (int x = 0; x < e.from_length(); ++x){
+//                     increment_depth(nodeid, offset + x);
+//                 }
+//             }
+//         }
+//     }
+//   };
 
-};
+//};
 
     class SRPE{
 
@@ -145,7 +173,9 @@ public:
             vector<string> ref_names;
             map<string, PathIndex> pindexes;
 
-            vector<pair<int, int> > intervals;
+            void merge_breakpoints(vector<BREAKPOINT>& bps, int dist);
+
+            bool overlap(BREAKPOINT a, BREAKPOINT p, int dist);
 
             void call_svs_paired_end(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath);
             void call_svs_split_read(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath);
@@ -154,7 +184,7 @@ public:
             // Calculate a proxy for discordance between a set of Alginments
             // and a subgraph (e.g. one that's been modified with a candidate variant)
             // Useful for deciding which variant is closest to what's represented in reads
-            double discordance_score(vector<Alignment> alns, VG* subgraph);
+            double discordance_score(vector<pair<Alignment&, Alignment&>> alns, VG* subgraph);
 
             // Convert Alignments to the read-like objects Fermi-lite uses in assembly
             void aln_to_bseq(Alignment& a, bseq1_t* read);
@@ -173,9 +203,6 @@ public:
 
             // Are multiple references present in the same subgraph?
             bool overlapping_refs = false;
-
-            // Maps from node-id to read depth
-            DepthMap depth;
 
             // Every SRPE gets its own filter
             vg::Filter ff;

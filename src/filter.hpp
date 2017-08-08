@@ -147,6 +147,7 @@ class Filter{
 
         float insert_mean = 1000;
         float insert_sd = 100;
+        int insert_max = 10000;
 
 
         };
