@@ -90,7 +90,7 @@ namespace vg{
         
         inline string to_string(){
             stringstream x;
-            x << "Pos: " << start << " u: " << upper_bound << " l: " << lower_bound << " s: " << total_supports();
+            x << "Pos: " << "N-" << std::get<0>(position) << " O-" << std::get<2>(position) << " u: " << upper_bound << " l: " << lower_bound << " s: " << total_supports();
             return x.str();
         }
 

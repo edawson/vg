@@ -24,6 +24,7 @@ namespace vg{
         if (bps.size() > 2){
             merged.push_back(bps[0]);
             for (int i = 1; i < bps.size(); ++i){
+                cerr << bps[i].to_string() << endl;
                 if (overlap(merged.back(), bps[i], dist)){
                     merged.back().merge(bps[i]);
                 }
@@ -52,7 +53,7 @@ namespace vg{
                 // else{
                     LRUCache<id_t,Node> ncache (1000);
                     LRUCache<id_t,vector<Edge>> ecache(1000);
-                    int xgdist = xg_cached_distance(a.position, p.position, 100000, ff.my_xg_index, ncache, ecache);
+                    int xgdist = xg_cached_distance(a.position, p.position, 10000, ff.my_xg_index, ncache, ecache);
                     return xgdist < dist;
                 // }
             }
@@ -91,8 +92,9 @@ namespace vg{
                 else if (a.read_mapped() == a.mate_unmapped()){
                     // One end anchored
                     // possible insertion or deletion anchor
+                    break_is_good = false;
                 }
-                if (ff.pair_orientation_filter(a, b)){
+                else if (ff.pair_orientation_filter(a, b)){
                     // Inversion hint
                     if (a.read_on_reverse_strand()){
                         Path p = trim_hanging_ends(a.path());
@@ -124,8 +126,9 @@ namespace vg{
                     }
                 }
 
-                if (a.discordant_insert_size()){
+                else if (a.discordant_insert_size()){
                     // Insertion or deletion
+                    break_is_good = false;
                     Path p = trim_hanging_ends(a.path());
                     Path p2 = trim_hanging_ends(b.path());
 
@@ -137,8 +140,8 @@ namespace vg{
                     bpoint.mates.push_back(secondary_break);
                 }
 
-                if (a.soft_clipped() | b.soft_clipped()){
-
+                else if (a.soft_clipped() | b.soft_clipped()){
+                    break_is_good  = false;
                 }
 
                 if (break_is_good){
@@ -153,10 +156,10 @@ namespace vg{
         stream::for_each_interleaved_pair_parallel(gamstream, pe_func);
 
         
-
+        cerr << bps.size() << " breakpoints found" << endl;
         merge_breakpoints(bps, 100);
 
-        cerr << bps.size() << " breakpoints found and merged." << endl;
+        cerr << bps.size() << " breakpoints after merging evidence." << endl;
 
 
 
