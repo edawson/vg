@@ -16,7 +16,7 @@ namespace vg{
         return a_node < b_node;
     };
 
-    void SRPE::merge_breakpoints(vector<BREAKPOINT>& bps, int dist){
+    void SRPE::merge_breakpoints(vector<BREAKPOINT>& bps){
         std::sort(bps.begin(), bps.end(), CompareBreakpoint);
 
         vector<BREAKPOINT> merged;
@@ -24,8 +24,7 @@ namespace vg{
         if (bps.size() > 2){
             merged.push_back(bps[0]);
             for (int i = 1; i < bps.size(); ++i){
-                cerr << bps[i].to_string() << endl;
-                if (overlap(merged.back(), bps[i], dist)){
+                if (overlap(bps[i], merged.back())){
                     merged.back().merge(bps[i]);
                 }
                 else{
@@ -35,27 +34,27 @@ namespace vg{
 
         }
 
-        
+        bps = merged;
         
     }
 
-    bool SRPE::overlap(BREAKPOINT a, BREAKPOINT p, int dist){
+    bool SRPE::overlap(BREAKPOINT a, BREAKPOINT p){
 
             if (a.start > -1 && p.start > -1){
-                if ( abs(a.start - p.start) < dist){
+                if ( abs(a.start - p.start) < max_dist_between_bp){
                     return true;
                 }
             }
             else{
-                // if (std::get<0>(a.position) == std::get<0>(p.position) && abs(std::get<2>(a.position) - std::get<2>(p.position)) < dist){
-                //     return true;
-                // }
-                // else{
+                if (std::get<0>(a.position) == std::get<0>(p.position) && abs(std::get<2>(a.position) - std::get<2>(p.position)) < max_dist_between_bp){
+                    return true;
+                }
+                else{
                     LRUCache<id_t,Node> ncache (1000);
                     LRUCache<id_t,vector<Edge>> ecache(1000);
-                    int xgdist = xg_cached_distance(a.position, p.position, 10000, ff.my_xg_index, ncache, ecache);
-                    return xgdist < dist;
-                // }
+                    int64_t xgdist = xg_cached_distance(a.position, p.position, 10000, ff.my_xg_index, ncache, ecache);
+                    return xgdist < max_dist_between_bp;
+                }
             }
             return false;
         }
@@ -84,11 +83,14 @@ namespace vg{
             if (supports_sv){
                 BREAKPOINT bpoint;
                 BREAKPOINT secondary_break;
-                bool break_is_good = true;
+                bool break_is_good = false;
                 if (!a.read_mapped() && a.mate_unmapped()){
                     // Unmapped
                     break_is_good = false;
                 }
+
+               
+
                 else if (a.read_mapped() == a.mate_unmapped()){
                     // One end anchored
                     // possible insertion or deletion anchor
@@ -96,6 +98,7 @@ namespace vg{
                 }
                 else if (ff.pair_orientation_filter(a, b)){
                     // Inversion hint
+                    break_is_good  = true;
                     if (a.read_on_reverse_strand()){
                         Path p = trim_hanging_ends(a.path());
                         Mapping rmap = p.mapping(p.mapping_size() - 1);
@@ -140,8 +143,12 @@ namespace vg{
                     bpoint.mates.push_back(secondary_break);
                 }
 
-                else if (a.soft_clipped() | b.soft_clipped()){
-                    break_is_good  = false;
+                else if (a.soft_clipped()){
+                    // Locate our break post-remapping
+                }
+
+                else if (b.soft_clipped()){
+                    break_is_good = false;
                 }
 
                 if (break_is_good){
@@ -157,7 +164,13 @@ namespace vg{
 
         
         cerr << bps.size() << " breakpoints found" << endl;
-        merge_breakpoints(bps, 100);
+        merge_breakpoints(bps);
+        for (int i = 1; i < bps.size(); i++){
+            cerr << bps[i].to_string() << endl;
+            cerr << pb2json(bps[i].reads[0].first) << endl;
+            cerr << pb2json(bps[i].reads[0].second) << endl << endl;
+        }
+
 
         cerr << bps.size() << " breakpoints after merging evidence." << endl;
 
@@ -176,42 +189,11 @@ namespace vg{
     }
 
 
-    void SRPE::call_svs(string graphfile, string gamfile, string refpath){
-        vg::VG* graph;
-        if (!graphfile.empty()){
-            ifstream in(graphfile);
-            graph = new VG(in, false);
-        }
-        ifstream gamstream;
-        gamstream.open(gamfile);
-        // Set up path index
-        ff.set_my_vg(graph);
-        ff.soft_clip_limit = 20;
-        ff.fill_node_to_position(refpath);
-    
-    //     std::function<vector<BREAKPOINT> (vector<BREAKPOINT>)> merge_breakpoints = [](vector<BREAKPOINT> bps){
-    //     vector<BREAKPOINT> ret;
-    //     BREAKPOINT sent;
-    //     sent.start = -100;
-    //     ret.push_back(sent);
-    //     for (int i = 0; i < bps.size(); i++){
-    //         BREAKPOINT a = bps[i];
-    //         bool merged = false;
-    //         for (int j = 0; j < ret.size(); j++){
-    //             if (ret[j].overlap(a, 20)){
-    //                 ret[j].other_supports += 1;
-    //                 merged = true;
-    //             }
-    //         }
-    //         if (!merged){
-    //             ret.push_back(a);
-    //         }
-    //     }
-    //     return ret;
-    // };
+    void SRPE::call_svs(vg::VG* graph, istream& gamstream, string refpath){
+        
+    vector<BREAKPOINT> bps;
 
-    vector<BREAKPOINT> pe_bps;
-    vector<BREAKPOINT> sr_bps;
+    call_svs_paired_end(graph, gamstream, bps, refpath);
 
     
 

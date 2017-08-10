@@ -173,13 +173,13 @@ namespace vg{
             vector<string> ref_names;
             map<string, PathIndex> pindexes;
 
-            void merge_breakpoints(vector<BREAKPOINT>& bps, int dist);
+            void merge_breakpoints(vector<BREAKPOINT>& bps);
 
-            bool overlap(BREAKPOINT a, BREAKPOINT p, int dist);
+            bool overlap(BREAKPOINT a, BREAKPOINT p);
 
             void call_svs_paired_end(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath);
             void call_svs_split_read(vg::VG* graph, istream& gamstream, vector<BREAKPOINT>& bps, string refpath);
-            void call_svs(string graphfile, string gamfile, string refpath);
+            void call_svs(vg::VG* graph, istream& gamstream, string refpath);
 
             // Calculate a proxy for discordance between a set of Alginments
             // and a subgraph (e.g. one that's been modified with a candidate variant)
@@ -220,6 +220,9 @@ namespace vg{
 
             // Cap the total coverage at a given position
             int max_reads = 125;
+
+            // Maximum distance between breakpoints to merge.
+            int max_dist_between_bp = 100;
 
 
 

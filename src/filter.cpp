@@ -544,7 +544,7 @@ namespace vg{
         bool f_rev = false;
         bool s_rev = false;
         
-        if (! (aln_first.mapping_quality() > 0 && aln_second.mapping_quality() > 0)){
+        if (! (aln_first.mapping_quality() > 0 && aln_second.mapping_quality() > 0 && aln_first.identity() > 0.5 && aln_second.identity() > 0.5)){
             return false;
         }
 
@@ -594,6 +594,7 @@ namespace vg{
         }
         else if ( ((f_rev != s_rev) && flipped)){
             return true;
+            //return false;
         }
         else{
             return false;

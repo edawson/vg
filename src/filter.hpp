@@ -136,8 +136,8 @@ class Filter{
         int min_cov = 0;
         int window_length = 0;
         int qual_offset = 0;
-        int soft_clip_limit = -1;
-        int split_read_limit = -1;
+        int soft_clip_limit = 25;
+        int split_read_limit = 25;
         double min_percent_identity = 0.0;
         double min_avg_qual = 0.0;
 
@@ -145,8 +145,8 @@ class Filter{
 
         int my_max_distance = 1000;
 
-        float insert_mean = 1000;
-        float insert_sd = 100;
+        float insert_mean = 700;
+        float insert_sd = 350;
         int insert_max = 10000;
 
 
